@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>With Love, CC</title>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #eee; text-align: center; padding: 2rem; }
+    textarea, input { width: 90%; max-width: 500px; padding: 1rem; margin: 1rem auto; border-radius: 8px; border: none; }
+    .btn { background: #444; color: #fff; padding: 1rem 2rem; border: none; border-radius: 8px; cursor: pointer; }
+    #tone { font-style: italic; margin-top: 0.5rem; color: #aaffaa; }
+  </style>
+</head>
+<body>
+  <h1>💌 With Love, CC</h1>
+
+  <div id="write">
+    <textarea id="letter" rows="8" placeholder="Write your love letter here..."></textarea>
+    <div id="tone">Write something to see the AI tone...</div>
+    <button class="btn" onclick="generateLink()">Generate Code</button>
+  </div>
+
+  <div id="read" style="display:none;">
+    <h2>Your letter:</h2>
+    <p id="output"></p>
+  </div>
+
+  <script>
+    const openaiApiKey = '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'; // <-- Put your OpenAI API key here
+
+    const letterInput = document.getElementById('letter');
+    const toneDisplay = document.getElementById('tone');
+
+    letterInput.addEventListener('input', debounce(async () => {
+      const text = letterInput.value.trim();
+      if (text.length < 10) {
+        toneDisplay.textContent = 'Write more for AI tone analysis...';
+        return;
+      }
+      toneDisplay.textContent = 'Checking tone...';
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a kind assistant that detects emotional tone in short letters.' },
+              { role: 'user', content: `Detect the emotional tone of this letter in 5 words or less: "${text}"` }
+            ],
+            max_tokens: 20,
+            temperature: 0.5,
+          }),
+        });
+        const data = await response.json();
+        if (data.choices && data.choices.length > 0) {
+          toneDisplay.textContent = 'Tone: ' + data.choices[0].message.content;
+        } else {
+          toneDisplay.textContent = 'Could not detect tone.';
+        }
+      } catch (error) {
+        toneDisplay.textContent = 'Error detecting tone.';
+      }
+    }, 1500));
+
+    function generateLink() {
+      const letter = letterInput.value.trim();
+      if (letter.length < 5) {
+        alert('Please write a longer letter!');
+        return;
+      }
+      const code = btoa(unescape(encodeURIComponent(letter)));
+      const link = `${location.origin}${location.pathname}#${code}`;
+      prompt("Copy and share this link:", link);
+    }
+
+    function readLetter() {
+      if (location.hash.length > 1) {
+        const code = location.hash.slice(1);
+        const letter = decodeURIComponent(escape(atob(code)));
+        document.getElementById('write').style.display = 'none';
+        document.getElementById('read').style.display = 'block';
+        document.getElementById('output').innerText = letter;
+      }
+    }
+
+    window.onload = readLetter;
+
+    // Debounce helper to limit API calls
+    function debounce(fn, delay) {
+      let timer = null;
+      return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+  </script>
+</body>
+</html>
